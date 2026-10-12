@@ -1,0 +1,7 @@
+FROM node:20-slim
+RUN npm install -g supergateway @bitbonsai/mcpvault
+# MCPVault is a filesystem MCP server (stdio) operating directly on the vault at /vault —
+# no Obsidian plugin, no REST, no API key. supergateway wraps it as streamable HTTP on /mcp.
+# The vault is bind-mounted; Obsidian Sync (obsidian-remote) propagates changes to devices.
+ENV HOME=/tmp
+CMD ["supergateway", "--port", "3002", "--outputTransport", "streamableHttp", "--stdio", "mcpvault /vault"]

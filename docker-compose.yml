@@ -1,0 +1,110 @@
+services:
+  assistant:
+    build:
+      context: .
+      dockerfile: ./build/Dockerfile.assistant
+    env_file: .env
+    environment:
+      TZ: ${TZ:-UTC}
+      HISTORY_PATH: /data/history.jsonl
+    volumes:
+      - ./data/obsidian-vault/Josh-Personal:/vault
+      - ./data/obsidian-state:/config/.config/obsidian
+      - ./data/assistant:/data
+    depends_on:
+      - todoist-mcp
+      - brave-search-mcp
+      - obsidian-mcp
+    restart: unless-stopped
+    networks:
+      - frontend
+      - ai-network
+
+
+  todoist-mcp:
+    build:
+      context: ./build
+      dockerfile: Dockerfile.todoist-mcp
+    environment:
+      TODOIST_API_KEY: ${TODOIST_API_KEY}
+      PORT: 3000
+    # Loopback-only publish so host-side Claude Code sessions can reach the MCP server.
+    ports:
+      - "127.0.0.1:3000:3000"
+    restart: unless-stopped
+    networks:
+      - frontend
+      - ai-network
+
+  brave-search-mcp:
+    build:
+      context: ./build
+      dockerfile: Dockerfile.brave-search-mcp
+    environment:
+      BRAVE_API_KEY: ${BRAVE_API_KEY}
+    # Loopback-only publish so host-side Claude Code sessions can reach the MCP server.
+    ports:
+      - "127.0.0.1:3001:3001"
+    restart: unless-stopped
+    networks:
+      - frontend
+      - ai-network
+
+  obsidian-mcp:
+    build:
+      context: ./build
+      dockerfile: Dockerfile.obsidian-mcp
+    # Run as the vault owner (PUID/PGID 1000) so files it writes match what
+    # obsidian-remote / Obsidian Sync expects.
+    user: "1000:1000"
+    volumes:
+      - ./data/obsidian-vault/Josh-Personal:/vault
+    # Loopback-only publish so host-side Claude Code sessions can reach the MCP server.
+    # frontend is required (non-internal bridge) for the host port mapping to route;
+    # ai-network is how the assistant container reaches it.
+    ports:
+      - "127.0.0.1:3002:3002"
+    restart: unless-stopped
+    mem_limit: 1024m # caps a slow memory leak; container restarts instead of bloating the host
+    networks:
+      - frontend
+      - ai-network
+
+  obsidian-remote:
+    image: ghcr.io/aj-owen/obsidian-remote:1.12.7
+    volumes:
+      - ./data/obsidian-vault:/config/vault
+      - ./data/obsidian-state:/config/.config/obsidian
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ:-UTC}
+      - OBSIDIAN_REMOTE_PASSWORD=${OBSIDIAN_REMOTE_PASSWORD:-}
+    restart: unless-stopped
+    networks:
+      - frontend
+      - ai-network
+
+  test:
+    build:
+      context: .
+      dockerfile: ./build/Dockerfile.assistant
+      target: dev
+    env_file: .env
+    environment:
+      ANTHROPIC_API_KEY: ""
+      VAULT_PATH: /tmp/vault-test
+    volumes:
+      - .:/app
+    command: ["python3", "-m", "pytest", "tests/", "-v"]
+    profiles: [test]
+    networks:
+      - ai-network
+
+networks:
+  frontend:
+    name: docker_proxy_network
+    external: true
+  ai-network:
+    name: ai_assistant_network
+    internal: true

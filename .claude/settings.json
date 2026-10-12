@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker compose logs *)",
+      "Bash(docker compose ps)",
+      "Bash(docker compose --profile test run --rm test *)",
+      "Bash(systemctl --user status *)",
+      "Bash(nmcli connection show *)",
+      "Bash(ping -c *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "file=$(jq -r '.tool_input.file_path // empty'); echo \"$file\" | grep -q '\\.py$' && docker compose --profile test run --rm test 2>&1 || true",
+            "async": true,
+            "statusMessage": "Running tests..."
+          }
+        ]
+      }
+    ]
+  }
+}

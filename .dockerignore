@@ -1,0 +1,10 @@
+data/
+.git/
+.venv/
+__pycache__/
+*.pyc
+tests/
+build/
+TODO.md
+HANDOFF.md
+user_context.md

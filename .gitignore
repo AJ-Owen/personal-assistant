@@ -1,0 +1,7 @@
+__pycache__
+*.local
+*.env
+.claude/settings.local.json
+data/
+.mcp.json
+NOTES.md

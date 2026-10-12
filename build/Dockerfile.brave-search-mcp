@@ -1,0 +1,4 @@
+FROM node:20-slim
+RUN npm install -g supergateway @modelcontextprotocol/server-brave-search
+# supergateway wraps the stdio-based brave-search MCP server as streamable HTTP on /mcp
+CMD ["supergateway", "--port", "3001", "--outputTransport", "streamableHttp", "--stdio", "mcp-server-brave-search"]

@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Assistant</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f0f0f;
+      color: #e8e8e8;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1.5rem 1rem 3rem;
+    }
+
+    .wrap {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    /* ── Input card ── */
+    .input-card {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    h1 {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #555;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      padding: 0.875rem;
+      background: #1a1a1a;
+      border: 1px solid #2e2e2e;
+      border-radius: 10px;
+      color: #e8e8e8;
+      font-size: 1rem;
+      line-height: 1.5;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    textarea:focus { border-color: #555; }
+    textarea::placeholder { color: #333; }
+
+    button {
+      width: 100%;
+      padding: 0.875rem;
+      background: #e8e8e8;
+      color: #0f0f0f;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+    }
+
+    button:hover { background: #fff; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .send-status {
+      min-height: 1.1rem;
+      font-size: 0.8rem;
+      text-align: center;
+      color: #555;
+    }
+
+    .send-status.ok  { color: #4caf7d; }
+    .send-status.err { color: #e05c5c; }
+
+    /* ── History feed ── */
+    .feed-label {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #555;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .feed {
+      display: flex;
+      flex-direction: column;
+      gap: 0.625rem;
+    }
+
+    .entry {
+      background: #141414;
+      border: 1px solid #232323;
+      border-radius: 10px;
+      padding: 0.75rem 0.875rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .entry-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 0.5rem;
+    }
+
+    .entry-input {
+      font-size: 0.95rem;
+      color: #d8d8d8;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .entry-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      flex-shrink: 0;
+    }
+
+    .entry-time {
+      font-size: 0.75rem;
+      color: #444;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      /* Fallback so an unrecognised status is still visible, not invisible. */
+      background: #e0a95c;
+    }
+
+    .dot.pending { background: #555; animation: pulse 1.4s ease-in-out infinite; }
+    .dot.done    { background: #4caf7d; }
+    .dot.error   { background: #e05c5c; }
+    /* Agent chose no action; raw text was filed to the inbox instead. */
+    .dot.unfiled { background: #e0a95c; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.25; }
+    }
+
+    .entry-actions {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .entry-actions li {
+      font-size: 0.8rem;
+      color: #555;
+      padding-left: 0.75rem;
+      position: relative;
+    }
+
+    .entry-actions li::before {
+      content: "→";
+      position: absolute;
+      left: 0;
+      color: #383838;
+    }
+
+    .entry-actions li.err { color: #9a3535; }
+
+    .entry-reply {
+      font-size: 0.95rem;
+      color: #c8c8c8;
+      line-height: 1.45;
+      padding-top: 0.15rem;
+    }
+
+    .feed-empty {
+      font-size: 0.8rem;
+      color: #333;
+      text-align: center;
+      padding: 1rem 0;
+    }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 0.5rem;
+      background: #1a1a1a;
+      color: #777;
+      border: 1px solid #2e2e2e;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .tab:hover { background: #222; }
+    .tab.active { background: #e8e8e8; color: #0f0f0f; border-color: #e8e8e8; }
+
+    /* ── Chat ── */
+    .chat-thread {
+      display: flex;
+      flex-direction: column;
+      gap: 0.625rem;
+      min-height: 2rem;
+    }
+
+    .bubble {
+      max-width: 88%;
+      padding: 0.625rem 0.875rem;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      overflow-wrap: break-word;
+    }
+
+    .bubble.user {
+      align-self: flex-end;
+      background: #2a3a4d;
+      color: #dce8f5;
+    }
+
+    .bubble.bot {
+      align-self: flex-start;
+      background: #141414;
+      border: 1px solid #232323;
+      color: #d8d8d8;
+    }
+
+    .bubble.thinking { color: #555; animation: pulse 1.4s ease-in-out infinite; }
+
+    .chat-actions {
+      align-self: flex-start;
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      padding-left: 0.875rem;
+    }
+
+    .chat-actions li {
+      font-size: 0.8rem;
+      color: #555;
+      padding-left: 0.75rem;
+      position: relative;
+    }
+
+    .chat-actions li::before {
+      content: "→";
+      position: absolute;
+      left: 0;
+      color: #383838;
+    }
+
+    .chat-actions li.err { color: #9a3535; }
+
+    .chat-input-row {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .chat-input-row textarea { min-height: 56px; flex: 1; }
+    .chat-input-row button { width: auto; padding: 0 1.25rem; }
+
+    .chat-reset {
+      background: none;
+      border: none;
+      color: #555;
+      font-size: 0.75rem;
+      font-weight: 400;
+      width: auto;
+      padding: 0;
+      align-self: flex-end;
+      cursor: pointer;
+    }
+
+    .chat-reset:hover { background: none; color: #888; }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Assistant</h1>
+
+    <div class="tabs">
+      <button class="tab active" id="tab-capture">Capture</button>
+      <button class="tab" id="tab-chat">Chat</button>
+    </div>
+
+    <div id="pane-capture" class="input-card" style="gap: 1.5rem;">
+      <div class="input-card">
+        <textarea id="note" placeholder="What's on your mind?" autofocus></textarea>
+        <button id="send">Send</button>
+        <p class="send-status" id="send-status"></p>
+      </div>
+
+      <span class="feed-label">Recent</span>
+      <div class="feed" id="feed">
+        <p class="feed-empty">No activity yet.</p>
+      </div>
+    </div>
+
+    <div id="pane-chat" class="input-card hidden" style="gap: 1rem;">
+      <div class="chat-thread" id="chat-thread"></div>
+      <div class="chat-input-row">
+        <textarea id="chat-input" placeholder="Ask your second brain…"></textarea>
+        <button id="chat-send">Ask</button>
+      </div>
+      <button class="chat-reset" id="chat-reset">new conversation</button>
+    </div>
+  </div>
+
+  <script>
+    const textarea   = document.getElementById("note");
+    const btn        = document.getElementById("send");
+    const sendStatus = document.getElementById("send-status");
+    const feed       = document.getElementById("feed");
+
+    // ── Utilities ────────────────────────────────────────────────────────────
+
+    function esc(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    }
+
+    function fmtTime(iso) {
+      const d = new Date(iso);
+      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+
+    // ── History rendering ────────────────────────────────────────────────────
+
+    function renderFeed(entries) {
+      if (!entries.length) {
+        feed.innerHTML = '<p class="feed-empty">No activity yet.</p>';
+        return;
+      }
+
+      feed.innerHTML = entries.map(e => {
+        const reply = e.reply
+          ? `<p class="entry-reply">${esc(e.reply)}</p>`
+          : "";
+
+        const actions = e.actions.length
+          ? `<ul class="entry-actions">${
+              e.actions.map(a =>
+                `<li class="${a.error ? "err" : ""}">${esc(a.text)}</li>`
+              ).join("")
+            }</ul>`
+          : "";
+
+        return `
+          <div class="entry">
+            <div class="entry-header">
+              <span class="entry-input">${esc(e.input)}</span>
+              <span class="entry-meta">
+                <span class="entry-time">${fmtTime(e.ts)}</span>
+                <span class="dot ${esc(e.status)}"></span>
+              </span>
+            </div>
+            ${reply}
+            ${actions}
+          </div>`;
+      }).join("");
+    }
+
+    // ── Polling ──────────────────────────────────────────────────────────────
+
+    let pollTimer = null;
+
+    async function fetchHistory() {
+      try {
+        const res = await fetch("/history");
+        if (!res.ok) return;
+        const entries = await res.json();
+        renderFeed(entries);
+        const hasPending = entries.some(e => e.status === "pending");
+        pollTimer = setTimeout(fetchHistory, hasPending ? 1500 : 12000);
+      } catch {
+        pollTimer = setTimeout(fetchHistory, 12000);
+      }
+    }
+
+    function kickPoll() {
+      clearTimeout(pollTimer);
+      pollTimer = setTimeout(fetchHistory, 600);
+    }
+
+    // ── Submit ───────────────────────────────────────────────────────────────
+
+    async function submit() {
+      const text = textarea.value.trim();
+      if (!text) return;
+
+      btn.disabled = true;
+      sendStatus.className = "send-status";
+      sendStatus.textContent = "Sending…";
+
+      try {
+        const res = await fetch("/webhook", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        textarea.value = "";
+        sendStatus.className = "send-status ok";
+        sendStatus.textContent = "Received.";
+        setTimeout(() => { sendStatus.textContent = ""; }, 2000);
+        kickPoll();
+      } catch (err) {
+        sendStatus.className = "send-status err";
+        sendStatus.textContent = `Error: ${err.message}`;
+      } finally {
+        btn.disabled = false;
+        textarea.focus();
+      }
+    }
+
+    btn.addEventListener("click", submit);
+
+    textarea.addEventListener("keydown", e => {
+      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        submit();
+      }
+    });
+
+    // ── Tabs ─────────────────────────────────────────────────────────────────
+
+    const tabCapture  = document.getElementById("tab-capture");
+    const tabChat     = document.getElementById("tab-chat");
+    const paneCapture = document.getElementById("pane-capture");
+    const paneChat    = document.getElementById("pane-chat");
+
+    function showPane(chat) {
+      tabCapture.classList.toggle("active", !chat);
+      tabChat.classList.toggle("active", chat);
+      paneCapture.classList.toggle("hidden", chat);
+      paneChat.classList.toggle("hidden", !chat);
+      (chat ? chatInput : textarea).focus();
+    }
+
+    tabCapture.addEventListener("click", () => showPane(false));
+    tabChat.addEventListener("click", () => showPane(true));
+
+    // ── Chat ─────────────────────────────────────────────────────────────────
+
+    const chatThread = document.getElementById("chat-thread");
+    const chatInput  = document.getElementById("chat-input");
+    const chatSend   = document.getElementById("chat-send");
+    const chatReset  = document.getElementById("chat-reset");
+
+    let conversationId = sessionStorage.getItem("chat-conversation-id") || null;
+
+    function addBubble(cls, text) {
+      const div = document.createElement("div");
+      div.className = `bubble ${cls}`;
+      div.textContent = text;
+      chatThread.appendChild(div);
+      div.scrollIntoView({ block: "end" });
+      return div;
+    }
+
+    function addChatActions(actions) {
+      if (!actions || !actions.length) return;
+      const ul = document.createElement("ul");
+      ul.className = "chat-actions";
+      for (const a of actions) {
+        const li = document.createElement("li");
+        if (a.error) li.className = "err";
+        li.textContent = a.text;
+        ul.appendChild(li);
+      }
+      chatThread.appendChild(ul);
+    }
+
+    async function chatSubmit() {
+      const message = chatInput.value.trim();
+      if (!message) return;
+
+      chatSend.disabled = true;
+      chatInput.value = "";
+      addBubble("user", message);
+      const thinking = addBubble("bot thinking", "Thinking…");
+
+      try {
+        const res = await fetch("/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message, conversation_id: conversationId }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        conversationId = data.conversation_id;
+        sessionStorage.setItem("chat-conversation-id", conversationId);
+        thinking.remove();
+        addBubble("bot", data.reply || "(no reply)");
+        addChatActions(data.actions);
+      } catch (err) {
+        thinking.remove();
+        addBubble("bot", `Error: ${err.message}`);
+      } finally {
+        chatSend.disabled = false;
+        chatInput.focus();
+      }
+    }
+
+    chatSend.addEventListener("click", chatSubmit);
+    chatInput.addEventListener("keydown", e => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        chatSubmit();
+      }
+    });
+    chatReset.addEventListener("click", () => {
+      conversationId = null;
+      sessionStorage.removeItem("chat-conversation-id");
+      chatThread.innerHTML = "";
+      chatInput.focus();
+    });
+
+    // ── Boot ─────────────────────────────────────────────────────────────────
+
+    fetchHistory();
+  </script>
+</body>
+</html>

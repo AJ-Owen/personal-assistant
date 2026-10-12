@@ -1,0 +1,21 @@
+# User Context
+
+Name: Josh Owen
+Timezone: America/Chicago
+Location: [Your city]
+
+## People
+- Partner: [Name]
+- [Add family, friends, colleagues as useful]
+
+## Preferences
+- [e.g. "prefers tasks with morning due times unless specified"]
+- [e.g. "uses metric system"]
+
+## Recurring context
+- [e.g. "gym days: Mon/Wed/Fri"]
+- [e.g. "standing meeting with team: Tuesdays 10am"]
+
+## Todoist projects
+- Shopping list project: [paste project ID from Todoist URL]
+- [Add other named projects Claude should know about]
