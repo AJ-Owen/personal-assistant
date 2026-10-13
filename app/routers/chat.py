@@ -106,10 +106,14 @@ async def chat(body: ChatRequest):
         dispatch=dispatch,
         model=settings.chat_model,
         max_turns=10,
-        max_tokens=4096,
+        max_tokens=8192,
         audit_source="chat",
         on_action=on_action,
+        # Vault retrieval is multistep tool use: search, read, follow links.
+        effort="medium",
     )
+    if not reply:
+        reply = "Sorry — I couldn't produce an answer to that. Try rephrasing."
 
     _conversations[conv_id] = _trim(messages)
     while len(_conversations) > _MAX_CONVERSATIONS:

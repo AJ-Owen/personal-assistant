@@ -235,15 +235,21 @@ Today is {today} ({now.strftime('%A')}). Summarise yesterday ({yesterday}).
 {modified_text}
 """
 
+    max_tokens = 4096
     response = await llm.get_client().messages.create(
         model=settings.summary_model,
-        max_tokens=1024,
+        max_tokens=max_tokens,
         system=system,
         messages=[{"role": "user", "content": user_message}],
+        # Summarising supplied material needs little deliberation; low effort
+        # keeps thinking short so it can't crowd the reply out of max_tokens.
+        output_config={"effort": "low"},
+        **llm.FALLBACK_KWARGS,
     )
+    llm.log_stop(log, "daily-summary", response, max_tokens)
 
     raw = "".join(
-        block.text for block in response.content if hasattr(block, "text")
+        block.text for block in response.content if getattr(block, "type", None) == "text"
     ).strip()
 
     if not raw:

@@ -51,20 +51,19 @@ async def run_agent_loop(
             tools=tools,
             messages=messages,
             **extra,
+            **llm.FALLBACK_KWARGS,
         )
         log.info("%s turn %d: stop_reason=%s", audit_source, turn, response.stop_reason)
+        llm.log_stop(log, f"{audit_source} turn {turn}", response, max_tokens)
 
-        # Thinking and response text share max_tokens. A truncated turn stops the
-        # loop exactly like a completed one, so without this it looks like clean
-        # success — mid-loop that means half-finished work reported as done.
-        if response.stop_reason == "max_tokens":
-            log.error(
-                "%s turn %d hit max_tokens (%d) — output truncated, work may be incomplete",
-                audit_source, turn, max_tokens,
-            )
-        messages.append({"role": "assistant", "content": response.content})
+        content = llm.known_blocks(response.content)
+        # A refusal before any output has empty content; appending an empty
+        # assistant turn would 400 every later request in a stored chat history.
+        if not content:
+            break
+        messages.append({"role": "assistant", "content": content})
 
-        text_parts = [b.text for b in response.content if getattr(b, "type", None) == "text"]
+        text_parts = [b.text for b in content if b.type == "text"]
         if text_parts:
             final_text = "\n".join(text_parts)
 
@@ -74,7 +73,7 @@ async def run_agent_loop(
             break
 
         tool_results = []
-        for block in response.content:
+        for block in content:
             if block.type != "tool_use":
                 continue
 

@@ -260,9 +260,9 @@ async def run(text: str, entry: dict | None = None) -> None:
             # Answering a question now needs search → read → notify (→ vault),
             # which does not fit the original 5.
             max_turns=8,
-            # Opus 5 thinks by default and max_tokens caps thinking + text
-            # together — 1024 truncated mid-answer.
-            max_tokens=4096,
+            # Thinking is always on and max_tokens caps thinking + text together —
+            # 1024 truncated mid-answer. It is a ceiling, not a charge.
+            max_tokens=16000,
             audit_source="webhook",
             on_action=on_action,
             # Classify-and-route needs judgment, not deep reasoning. Medium keeps

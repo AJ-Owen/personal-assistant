@@ -88,3 +88,53 @@ async def test_max_turns_caps_runaway_loop(vault_tmp, monkeypatch):
         audit_source="test",
     )
     assert len(client.messages.calls) == 3
+
+
+@pytest.mark.asyncio
+async def test_refusal_with_empty_content_is_not_appended(vault_tmp, monkeypatch, caplog):
+    """A pre-output refusal returns no content; an empty assistant turn stored in
+    chat history would 400 every later request in that conversation."""
+    _install(monkeypatch, [response("refusal")])
+    messages = [{"role": "user", "content": "go"}]
+
+    async def dispatch(name, inp):
+        raise AssertionError("no tool should run")
+
+    final = await run_agent_loop(
+        system_prompt="sys", messages=messages, tools=[], dispatch=dispatch,
+        model="test-model", max_turns=5, max_tokens=100, audit_source="test",
+    )
+
+    assert final == ""
+    assert messages == [{"role": "user", "content": "go"}]
+    assert any("refused" in r.message and r.levelname == "ERROR" for r in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_unknown_blocks_filtered_and_tools_still_dispatch(vault_tmp, monkeypatch):
+    """A server-side fallback inserts a `fallback` marker block; it must not be
+    echoed back or break tool dispatch."""
+    from types import SimpleNamespace
+
+    marker = SimpleNamespace(type="fallback")
+    client = _install(monkeypatch, [
+        response("tool_use", marker, tool_block("my_tool", {"x": 1})),
+        response("end_turn", text_block("done")),
+    ])
+    dispatched = []
+
+    async def dispatch(name, inp):
+        dispatched.append(name)
+        return "ok"
+
+    await run_agent_loop(
+        system_prompt="sys", messages=[{"role": "user", "content": "go"}],
+        tools=[{"name": "my_tool", "description": "", "input_schema": {"type": "object"}}],
+        dispatch=dispatch, model="test-model", max_turns=5, max_tokens=100,
+        audit_source="test",
+    )
+
+    assert dispatched == ["my_tool"]
+    echoed = client.messages.calls[1]["messages"][1]["content"]
+    assert [b.type for b in echoed] == ["tool_use"]
+    assert client.messages.calls[0]["extra_body"] == {"fallbacks": "default"}

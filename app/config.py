@@ -34,11 +34,14 @@ class Settings(BaseSettings):
     # /webhook returns before the agent runs, latency is not a constraint either.
     # Both reasons for the cheap tier were wrong, and its routing mistakes are the
     # expensive kind (a wrong Todoist task is never cleaned up), so it gets the
-    # strongest tier. At this volume the whole stack is ~£1/month.
-    agent_model: str = "claude-opus-5"
-    processor_model: str = "claude-sonnet-5"
-    summary_model: str = "claude-sonnet-5"
-    chat_model: str = "claude-sonnet-5"
+    # strongest tier. The inbox processor follows the same logic: once a day,
+    # and it patches person notes and completes Todoist tasks, so a misjudgment
+    # there edits real data. Summary and chat are lower-stakes: Sonnet.
+    # Effort is set per call site — Opus 5.5 defaults to medium, Sonnet 5.5 to high.
+    agent_model: str = "claude-opus-5-5"
+    processor_model: str = "claude-opus-5-5"
+    summary_model: str = "claude-sonnet-5-5"
+    chat_model: str = "claude-sonnet-5-5"
 
     # JSONL file persisting the /history feed across restarts; empty = in-memory only
     history_path: str = ""

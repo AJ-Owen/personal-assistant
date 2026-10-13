@@ -340,8 +340,9 @@ async def process_inbox() -> None:
             dispatch=dispatch,
             model=settings.processor_model,
             max_turns=15,
-            max_tokens=8096,
+            max_tokens=16000,
             audit_source="inbox-processor",
+            effort="medium",
         )
 
         if not archive_called and inbox_has_entries:

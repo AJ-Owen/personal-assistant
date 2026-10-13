@@ -99,8 +99,8 @@ The Pebble Index 01 posts `multipart/form-data` instead of JSON, with the transc
 | `NTFY_URL` | `http://ntfy:80` | ntfy base URL for push notifications |
 | `NTFY_TOPIC` | `""` | ntfy topic; empty disables notifications entirely |
 | `NTFY_TOKEN` | `""` | ntfy access token (write-only user) |
-| `AGENT_MODEL` | `claude-opus-5` | Model for the webhook capture agent |
-| `PROCESSOR_MODEL` / `SUMMARY_MODEL` / `CHAT_MODEL` | `claude-sonnet-5` | Models for inbox filing, daily summary, and chat |
+| `AGENT_MODEL` / `PROCESSOR_MODEL` | `claude-opus-5-5` | Models for the webhook capture agent and inbox filing |
+| `SUMMARY_MODEL` / `CHAT_MODEL` | `claude-sonnet-5-5` | Models for the daily summary and chat |
 | `PROCESS_HOUR` | `6` | Hour (local TZ) to run the daily inbox processing |
 | `DAILY_SUMMARY_HOUR` | `7` | Hour (local TZ) to generate the daily note summary |
 | `TZ` | `UTC` | Timezone for scheduling |
